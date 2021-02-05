@@ -8,13 +8,13 @@
 
 %% --------------------------------------------------------------------------
 
--spec path(req()) -> {string(), req()}.
-path({cowboy, Req})       -> {Path, Req1} = cowboy_req:path(Req),
-                             {binary_to_list(Path), {cowboy, Req1}}.
+-spec path(req()) -> string().
+path({cowboy, Req})       -> Path = cowboy_req:path(Req),
+                             binary_to_list(Path).
 
--spec method(req()) -> {atom(), req()}.
-method({cowboy, Req})       -> {Method, Req1} = cowboy_req:method(Req),
-                               {method_atom(Method), {cowboy, Req1}}.
+-spec method(req()) -> atom().
+method({cowboy, Req})       -> Method = cowboy_req:method(Req),
+                               method_atom(Method).
 
 -spec method_atom(binary() | atom()) -> atom().
 method_atom(<<"GET">>) -> 'GET';
@@ -33,7 +33,7 @@ method_atom('PATCH') -> 'PATCH';
 method_atom('HEAD') -> 'HEAD'.
 
 -spec body(req()) -> {binary(), req()}.
-body({cowboy, Req})       -> {ok, Body, Req1} = cowboy_req:body(Req),
+body({cowboy, Req})       -> {ok, Body, Req1} = cowboy_req:read_body(Req),
                              {Body, {cowboy, Req1}}.
 
 -spec body_qs(req()) -> {binary(), req()}.
@@ -47,7 +47,7 @@ body_qs(Req) ->
             body_qs2(Req1)
     end.
 body_qs2({cowboy, Req}) ->
-    {ok, BodyQS, Req1} = cowboy_req:body_qs(Req),
+    {ok, BodyQS, Req1} = cowboy_req:read_urlencoded_body(Req),
     case proplists:get_value(<<"d">>, BodyQS) of
         undefined ->
             {<<>>, {cowboy, Req1}};

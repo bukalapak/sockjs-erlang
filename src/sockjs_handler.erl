@@ -103,10 +103,10 @@ strip_prefix(LongPath, Prefix) ->
 
 -spec dispatch_req(service(), req()) -> {dispatch_result(), req()}.
 dispatch_req(#service{prefix = Prefix}, Req) ->
-    {Method, Req1} = sockjs_http:method(Req),
-    {LongPath, Req2} = sockjs_http:path(Req1),
+    Method = sockjs_http:method(Req),
+    LongPath = sockjs_http:path(Req),
     {ok, PathRemainder} = strip_prefix(LongPath, Prefix),
-    {dispatch(Method, PathRemainder), Req2}.
+    {dispatch(Method, PathRemainder), Req}.
 
 -spec dispatch(atom(), nonempty_string()) -> dispatch_result().
 dispatch(Method, Path) ->
