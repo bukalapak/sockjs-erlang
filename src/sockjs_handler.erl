@@ -60,9 +60,9 @@ init_state(Prefix, Callback, State, Options) ->
 
 is_valid_ws(Service, Req) ->
     case get_action(Service, Req) of
-        {{match, WS}, Req1} when WS =:= websocket orelse WS =:= rawwebsocket ->
-            valid_ws_request(Service, Req1);
-        {_Else, _Req1} ->
+        {match, WS} when WS =:= websocket orelse WS =:= rawwebsocket ->
+            valid_ws_request(Service, Req);
+        _Else ->
             {false, {}}
     end.
 
@@ -77,7 +77,7 @@ valid_ws_upgrade(Req) ->
     case sockjs_http:header(upgrade, Req) of
         undefined ->
             false;
-        {V, _Req2} ->
+        V ->
             case string:to_lower(V) of
                 "websocket" -> true;
                 _Else -> false
@@ -93,7 +93,7 @@ valid_ws_connection(Req) ->
                 string:strip(T)
                 || T <- string:tokens(string:to_lower(V), ",")
             ],
-            {lists:member("upgrade", Vs), Req}
+            lists:member("upgrade", Vs)
     end.
 
 -spec get_action(service(), req()) ->
