@@ -12,7 +12,7 @@ encode(Thing) -> mochijson2_fork:encode(Thing).
 
 decode(Encoded) ->
     try mochijson2_fork:decode(Encoded) of
-      V -> {ok, V}
+        V -> {ok, V}
     catch
-      _:E -> {error, E}
+        _:E -> {error, E}
     end.
