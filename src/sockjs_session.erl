@@ -370,7 +370,7 @@ handle_info(session_timeout, State = #session{response_pid = undefined}) ->
 handle_info(heartbeat_triggered, State = #session{response_pid = RPid}) when RPid =/= undefined ->
     RPid ! go,
     {noreply, State#session{heartbeat_tref = triggered}};
-handle_info(Info, State) ->
+handle_info(_Info, State) ->
     % stop, {odd_info, Info}, State}.
     {noreply, State}.
 

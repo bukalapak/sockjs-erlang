@@ -281,7 +281,7 @@ handle(
     websocket | http
 ) -> no_return().
 
-default_logger(_Service, Req, _Type) ->
+default_logger(_Service, _Req, _Type) ->
     % As the service need a function to call as default, we simply give a dummy function
     %    LongPath = sockjs_http:path(Req),
     %    Method   = sockjs_http:method(Req).

@@ -20,7 +20,7 @@
 cache_for(Req, Headers) ->
     Expires =
         calendar:gregorian_seconds_to_datetime(
-            calendar:datetime_to_gregorian_seconds(calendar:now_to_datetime(now())) +
+            calendar:datetime_to_gregorian_seconds(calendar:now_to_datetime(erlang:timestamp())) +
                 (?YEAR)
         ),
     H = [
