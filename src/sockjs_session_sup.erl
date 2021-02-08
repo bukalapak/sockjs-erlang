@@ -8,18 +8,22 @@
 
 %% --------------------------------------------------------------------------
 
--spec start_link() -> ignore | {ok, pid()} |
-		      {error, any()}.
+-spec start_link() ->
+    ignore
+    | {ok, pid()}
+    | {error, any()}.
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     {ok,
-     {{simple_one_for_one, 10000, 1},
-      [{undefined, {sockjs_session, start_link, []},
-	transient, 5000, worker, [sockjs_session]}]}}.
+        {{simple_one_for_one, 10000, 1}, [
+            {undefined, {sockjs_session, start_link, []}, transient, 5000, worker, [sockjs_session]}
+        ]}}.
 
 start_child(SessionId, Service, Info) ->
-    supervisor:start_child(?MODULE,
-			   [SessionId, Service, Info]).
+    supervisor:start_child(
+        ?MODULE,
+        [SessionId, Service, Info]
+    ).
