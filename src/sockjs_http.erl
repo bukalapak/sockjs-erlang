@@ -136,7 +136,7 @@ peername({cowboy, Req}) -> cowboy_req:peer(Req).
 
 -spec sockname(req()) -> {inet:ip_address(), non_neg_integer()}.
 
-sockname({cowboy, Req}) -> cowboy_req:peer(Req).
+sockname({cowboy, Req}) -> cowboy_req:sock(Req).
 
 %% --------------------------------------------------------------------------
 

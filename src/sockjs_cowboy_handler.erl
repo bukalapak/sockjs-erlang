@@ -9,7 +9,7 @@
 -export([
     websocket_handle/2,
     websocket_info/2,
-    websocket_init/2,
+    websocket_init/1,
     websocket_terminate/2
 ]).
 
@@ -20,21 +20,26 @@
 init(#{ref := http} = Req, Service) ->
     case sockjs_handler:is_valid_ws(Service, {cowboy, Req}) of
         {true, _Reason} ->
-            {cowboy_websocket, Req, Service};
+						Service1 =  Service#service{ disconnect_delay = 5 * 60 * 1000 },
+            Info = sockjs_handler:extract_info({cowboy, Req}),
+            SessionPid = sockjs_session:maybe_create(undefined, Service1, Info),
+            RawWebSocket =
+                case sockjs_handler:get_action(Service, {cowboy, Req}) of
+                    {match, WS} when WS =:= websocket orelse WS =:= rawwebsocket -> WS
+								end,
+
+            {cowboy_websocket, Req, {RawWebSocket, SessionPid}};
         {false, _Reason} ->
-            {ok, Req, Service}
+            {ok, Req, {}}
     end.
 
 terminate(_Reason, _Req, _Service) -> ok.
 
 %% --------------------------------------------------------------------------
 
-websocket_init(
-    _TransportName,
-    _Service
-) ->
-    self() ! go,
-    {ok, {}}.
+websocket_init(S) ->
+		self() ! go,
+    {[], S}.
 
 websocket_handle(
     {text, Data},
@@ -47,7 +52,7 @@ websocket_handle(
             Data
         )
     of
-        ok -> {ok, S};
+        ok -> {[], S};
         shutdown -> {stop, S}
     end;
 websocket_handle(_Unknown, S) ->
@@ -59,7 +64,7 @@ websocket_info(
 ) ->
     case sockjs_ws_handler:reply(RawWebsocket, SessionPid) of
         wait ->
-            {ok, S};
+            {[], S};
         {ok, Data} ->
             self() ! go,
             {reply, {text, Data}, S};

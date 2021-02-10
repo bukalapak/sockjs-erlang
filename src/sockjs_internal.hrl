@@ -16,7 +16,9 @@
     heartbeat_delay :: non_neg_integer(),
     response_limit :: non_neg_integer(),
     logger :: logger(),
-    subproto_pref :: [binary()]
+    subproto_pref :: [binary()],
+    session_pid :: any(),
+    raw_websocket :: any()
 }).
 
 -type service() :: #service{}.
