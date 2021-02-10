@@ -15,13 +15,13 @@
 rand32() ->
     case get(random_seeded) of
         undefined ->
-            {MegaSecs, Secs, MicroSecs} = now(),
-            _ = random:seed(MegaSecs, Secs, MicroSecs),
+            {MegaSecs, Secs, MicroSecs} = erlang:timestamp(),
+            _ = rand:seed(MegaSecs, Secs, MicroSecs),
             put(random_seeded, true);
         _Else ->
             ok
     end,
-    random:uniform(erlang:trunc(math:pow(2, 32))) - 1.
+    rand:uniform(erlang:trunc(math:pow(2, 32))) - 1.
 
 -spec encode_frame(frame()) -> iodata().
 

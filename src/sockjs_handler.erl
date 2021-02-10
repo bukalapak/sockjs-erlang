@@ -56,58 +56,55 @@ init_state(Prefix, Callback, State, Options) ->
 
 %% --------------------------------------------------------------------------
 
--spec is_valid_ws(service(), req()) -> {boolean(), req(), tuple()}.
+-spec is_valid_ws(service(), req()) -> {boolean(), tuple()}.
 
 is_valid_ws(Service, Req) ->
     case get_action(Service, Req) of
-        {{match, WS}, Req1} when WS =:= websocket orelse WS =:= rawwebsocket ->
-            valid_ws_request(Service, Req1);
-        {_Else, Req1} ->
-            {false, Req1, {}}
+        {match, WS} when WS =:= websocket orelse WS =:= rawwebsocket ->
+            valid_ws_request(Service, Req);
+        _Else ->
+            {false, {}}
     end.
 
--spec valid_ws_request(service(), req()) -> {boolean(), req(), tuple()}.
+-spec valid_ws_request(service(), req()) -> {boolean(), tuple()}.
 
 valid_ws_request(_Service, Req) ->
-    {R1, Req1} = valid_ws_upgrade(Req),
-    {R2, Req2} = valid_ws_connection(Req1),
-    {R1 and R2, Req2, {R1, R2}}.
+    R1 = valid_ws_upgrade(Req),
+    R2 = valid_ws_connection(Req),
+    {R1 and R2, {R1, R2}}.
 
 valid_ws_upgrade(Req) ->
     case sockjs_http:header(upgrade, Req) of
-        {undefined, Req2} ->
-            {false, Req2};
-        {V, Req2} ->
+        undefined ->
+            false;
+        V ->
             case string:to_lower(V) of
-                "websocket" -> {true, Req2};
-                _Else -> {false, Req2}
+                "websocket" -> true;
+                _Else -> false
             end
     end.
 
 valid_ws_connection(Req) ->
     case sockjs_http:header(connection, Req) of
-        {undefined, Req2} ->
-            {false, Req2};
-        {V, Req2} ->
+        undefined ->
+            false;
+        V ->
             Vs = [
                 string:strip(T)
                 || T <- string:tokens(string:to_lower(V), ",")
             ],
-            {lists:member("upgrade", Vs), Req2}
+            lists:member("upgrade", Vs)
     end.
 
 -spec get_action(service(), req()) ->
-    {nomatch
-        | {match, atom()},
-        req()}.
+    nomatch
+    | {match, atom()}.
 
 get_action(Service, Req) ->
-    {Dispatch, Req1} = dispatch_req(Service, Req),
+    Dispatch = dispatch_req(Service, Req),
     case Dispatch of
-        {match, {_, Action, _, _, _}} ->
-            {{match, Action}, Req1};
-        _Else ->
-            {nomatch, Req1}
+        {match, {_, Action, _, _, _}} -> {match, Action};
+        _Else -> nomatch
     end.
 
 %% --------------------------------------------------------------------------
@@ -133,13 +130,13 @@ strip_prefix(LongPath, Prefix) ->
 -spec dispatch_req(
     service(),
     req()
-) -> {dispatch_result(), req()}.
+) -> dispatch_result().
 
 dispatch_req(#service{prefix = Prefix}, Req) ->
-    {Method, Req1} = sockjs_http:method(Req),
-    {LongPath, Req2} = sockjs_http:path(Req1),
+    Method = sockjs_http:method(Req),
+    LongPath = sockjs_http:path(Req),
     {ok, PathRemainder} = strip_prefix(LongPath, Prefix),
-    {dispatch(Method, PathRemainder), Req2}.
+    dispatch(Method, PathRemainder).
 
 -spec dispatch(
     atom(),
@@ -176,12 +173,7 @@ dispatch(Method, Path) ->
 %% --------------------------------------------------------------------------
 
 filters() ->
-    OptsFilters = [
-        h_sid,
-        xhr_cors,
-        cache_for,
-        xhr_options_post
-    ],
+    %OptsFilters = [h_sid, xhr_cors, cache_for, xhr_options_post],
     %% websocket does not actually go via handle_req/3 but we need
     %% something in dispatch/2
     [
@@ -224,9 +216,9 @@ re(Path, S) ->
 -spec handle_req(service(), req()) -> req().
 
 handle_req(Service = #service{logger = Logger}, Req) ->
-    Req0 = Logger(Service, Req, http),
-    {Dispatch, Req1} = dispatch_req(Service, Req0),
-    handle(Dispatch, Service, Req1).
+    Logger(Service, Req, http),
+    Dispatch = dispatch_req(Service, Req),
+    handle(Dispatch, Service, Req).
 
 handle(nomatch, _Service, Req) ->
     sockjs_http:reply(404, [], "", Req);
@@ -257,13 +249,13 @@ handle(
     ),
     case Type of
         send ->
-            {Info, Req3} = extract_info(Req2),
+            Info = extract_info(Req2),
             _SPid = sockjs_session:maybe_create(
                 Session,
                 Service,
                 Info
             ),
-            sockjs_action:Action(Req3, Headers, Service, Session);
+            sockjs_action:Action(Req2, Headers, Service, Session);
         recv ->
             try
                 sockjs_action:Action(
@@ -274,8 +266,8 @@ handle(
                 )
             catch
                 no_session ->
-                    {H, Req3} = sockjs_filters:h_sid(Req2, []),
-                    sockjs_http:reply(404, H, "", Req3)
+                    H = sockjs_filters:h_sid(Req2, []),
+                    sockjs_http:reply(404, H, "", Req2)
             end;
         none ->
             sockjs_action:Action(Req2, Headers, Service)
@@ -287,28 +279,29 @@ handle(
     service(),
     req(),
     websocket | http
-) -> req().
+) -> no_return().
 
-default_logger(_Service, Req, _Type) ->
-    {LongPath, Req1} = sockjs_http:path(Req),
-    {Method, Req2} = sockjs_http:method(Req1),
+default_logger(_Service, _Req, _Type) ->
+    % As the service need a function to call as default, we simply give a dummy function
+    %    LongPath = sockjs_http:path(Req),
+    %    Method   = sockjs_http:method(Req).
     %    io:format("~s ~s~n", [Method, LongPath]),
-    Req2.
+    ok.
 
--spec extract_info(req()) -> {info(), req()}.
+-spec extract_info(req()) -> info().
 
 extract_info(Req) ->
-    {Peer, Req0} = sockjs_http:peername(Req),
-    {Sock, Req1} = sockjs_http:sockname(Req0),
-    {Path, Req2} = sockjs_http:path(Req1),
-    {Headers, Req3} = lists:foldl(
-        fun(H, {Acc, R0}) ->
-            case sockjs_http:header(H, R0) of
-                {undefined, R1} -> {Acc, R1};
-                {V, R1} -> {[{H, V} | Acc], R1}
+    Peer = sockjs_http:peername(Req),
+    Sock = sockjs_http:sockname(Req),
+    Path = sockjs_http:path(Req),
+    Headers = lists:foldl(
+        fun(H, Acc) ->
+            case sockjs_http:header(H, Req) of
+                undefined -> Acc;
+                V -> [{H, V} | Acc]
             end
         end,
-        {[], Req2},
+        [],
         [
             referer,
             'x-client-ip',
@@ -318,10 +311,9 @@ extract_info(Req) ->
             'x-real-ip'
         ]
     ),
-    {[
-            {peername, Peer},
-            {sockname, Sock},
-            {path, Path},
-            {headers, Headers}
-        ],
-        Req3}.
+    [
+        {peername, Peer},
+        {sockname, Sock},
+        {path, Path},
+        {headers, Headers}
+    ].

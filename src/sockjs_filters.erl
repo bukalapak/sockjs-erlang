@@ -20,7 +20,7 @@
 cache_for(Req, Headers) ->
     Expires =
         calendar:gregorian_seconds_to_datetime(
-            calendar:datetime_to_gregorian_seconds(calendar:now_to_datetime(now())) +
+            calendar:datetime_to_gregorian_seconds(calendar:now_to_datetime(erlang:timestamp())) +
                 (?YEAR)
         ),
     H = [
@@ -36,7 +36,7 @@ h_sid(Req, Headers) ->
     %% a JSESSIONID cookie. If this cookie isn't yet set, we shall
     %% set it to a dumb value. It doesn't really matter what, as
     %% session information is usually added by the load balancer.
-    {C, Req2} = sockjs_http:jsessionid(Req),
+    C = sockjs_http:jsessionid(Req),
     H =
         case C of
             undefined ->
@@ -44,7 +44,7 @@ h_sid(Req, Headers) ->
             Jsid ->
                 [{"Set-Cookie", "JSESSIONID=" ++ Jsid ++ "; path=/"}]
         end,
-    {H ++ Headers, Req2}.
+    H ++ Headers.
 
 -spec h_no_cache(req(), headers()) -> {headers(), req()}.
 

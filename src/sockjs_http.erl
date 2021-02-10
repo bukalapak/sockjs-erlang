@@ -24,17 +24,17 @@
 
 %% --------------------------------------------------------------------------
 
--spec path(req()) -> {string(), req()}.
+-spec path(req()) -> string().
 
 path({cowboy, Req}) ->
-    {Path, Req1} = cowboy_req:path(Req),
-    {binary_to_list(Path), {cowboy, Req1}}.
+    Path = cowboy_req:path(Req),
+    binary_to_list(Path).
 
--spec method(req()) -> {atom(), req()}.
+-spec method(req()) -> atom().
 
 method({cowboy, Req}) ->
-    {Method, Req1} = cowboy_req:method(Req),
-    {method_atom(Method), {cowboy, Req1}}.
+    Method = cowboy_req:method(Req),
+    method_atom(Method).
 
 -spec method_atom(binary() | atom()) -> atom().
 
@@ -56,8 +56,16 @@ method_atom('HEAD') -> 'HEAD'.
 -spec body(req()) -> {binary(), req()}.
 
 body({cowboy, Req}) ->
-    {ok, Body, Req1} = cowboy_req:body(Req),
+    {ok, Body, Req1} = body(Req, <<"">>),
     {Body, {cowboy, Req1}}.
+
+body({cowboy, Req}, Acc) ->
+    case cowboy_req:read_body(Req) of
+        {ok, Data, Req} ->
+            {ok, <<Acc/binary, Data/binary>>, Req};
+        {more, Data, Req} ->
+            body(Req, <<Acc/binary, Data/binary>>)
+    end.
 
 -spec body_qs(req()) -> {binary(), req()}.
 
@@ -72,7 +80,8 @@ body_qs(Req) ->
     end.
 
 body_qs2({cowboy, Req}) ->
-    {ok, BodyQS, Req1} = cowboy_req:body_qs(Req),
+    {ok, BodyQS, Req1} =
+        cowboy_req:read_urlencoded_body(Req),
     case proplists:get_value(<<"d">>, BodyQS) of
         undefined -> {<<>>, {cowboy, Req1}};
         V -> {V, {cowboy, Req1}}
@@ -84,17 +93,17 @@ body_qs2({cowboy, Req}) ->
         req()}.
 
 header(K, {cowboy, Req}) ->
-    {H, Req2} = cowboy_req:header(K, Req),
-    {V, Req3} =
+    H = cowboy_req:header(K, Req),
+    V =
         case H of
             undefined ->
-                cowboy_req:header(atom_to_binary(K, utf8), Req2);
+                cowboy_req:header(atom_to_binary(K, utf8), Req);
             _ ->
-                {H, Req2}
+                H
         end,
     case V of
-        undefined -> {undefined, {cowboy, Req3}};
-        _ -> {binary_to_list(V), {cowboy, Req3}}
+        undefined -> undefined;
+        _ -> binary_to_list(V)
     end.
 
 -spec jsessionid(req()) ->
@@ -103,12 +112,13 @@ header(K, {cowboy, Req}) ->
         req()}.
 
 jsessionid({cowboy, Req}) ->
-    {C, Req2} = cowboy_req:cookie(<<"JSESSIONID">>, Req),
+    #{'JSESSIONID' := C} = cowboy_req:cookie(
+        [{'JSESSIONID', [], undefined}],
+        Req
+    ),
     case C of
-        _ when is_binary(C) ->
-            {binary_to_list(C), {cowboy, Req2}};
-        undefined ->
-            {undefined, {cowboy, Req2}}
+        _ when is_binary(C) -> {binary_to_list(C), cowboy};
+        undefined -> {undefined, cowboy}
     end.
 
 -spec callback(req()) -> {nonempty_string() | undefined, req()}.
@@ -120,17 +130,13 @@ callback({cowboy, Req}) ->
         _ -> {binary_to_list(CB), {cowboy, Req1}}
     end.
 
--spec peername(req()) -> {{inet:ip_address(), non_neg_integer()}, req()}.
+-spec peername(req()) -> {inet:ip_address(), non_neg_integer()}.
 
-peername({cowboy, Req}) ->
-    {P, Req1} = cowboy_req:peer(Req),
-    {P, {cowboy, Req1}}.
+peername({cowboy, Req}) -> cowboy_req:peer(Req).
 
--spec sockname(req()) -> {{inet:ip_address(), non_neg_integer()}, req()}.
+-spec sockname(req()) -> {inet:ip_address(), non_neg_integer()}.
 
-sockname({cowboy, Req} = R) ->
-    {Addr, _Req} = cowboy_req:peer(Req),
-    {Addr, R}.
+sockname({cowboy, Req}) -> cowboy_req:sock(Req).
 
 %% --------------------------------------------------------------------------
 
